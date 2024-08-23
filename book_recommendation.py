@@ -8,9 +8,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from langchain_community_.storage.ignite import GridGainStore
-from langchain_community_.document_loaders.ignite import IgniteDocumentLoader
-from langchain_community_.chat_message_histories.ignite import IgniteChatMessageHistory
+from langchain_community.storage.ignite import GridGainStore
+from langchain_community.document_loaders.ignite import IgniteDocumentLoader
+from langchain_community.chat_message_histories.ignite import IgniteChatMessageHistory
 from langchain_community.cache import InMemoryCache
 from langchain.schema import Document
 from langchain.memory import ConversationBufferMemory
@@ -30,7 +30,7 @@ try:
     logger.info("IgniteDocumentLoader initialized successfully.")
 
     key_value_store = GridGainStore(
-        cache_name="laptop_specs",
+        cache_name="book_specs",
         host="localhost",
         port=10800
     )
@@ -45,7 +45,7 @@ try:
     logger.info("IgniteChatMessageHistory initialized successfully.")
 
 except Exception as e:
-    logger.error(f"Error initializing stores: {e}", exc_info=True)
+    logger.exception(f"Error initializing stores: {e}", exc_info=True)
     raise
 
 # Initialize Gemini
@@ -67,13 +67,13 @@ print(memory)
 
 # Define the conversation template
 conversation_template = ChatPromptTemplate.from_messages([
-    ("human", "You are a helpful AI assistant specializing in laptop recommendations. Use the provided laptop information to assist the user."),
+    ("human", "You are a helpful AI assistant specializing in Book recommendations. Use the provided book information to assist the user."),
     MessagesPlaceholder(variable_name="history"),
     ("human", """
-Relevant Laptop Information:
+Relevant Books Information:
 {reviews}
 
-Laptop Specifications:
+Books Specifications:
 {specs}
 
 User Query: {input}
@@ -113,31 +113,31 @@ def get_relevant_documents(query: str) -> List[Document]:
         logger.debug(f"Returning {len(relevant_docs)} relevant documents")
         return relevant_docs
     except Exception as e:
-        logger.error(f"Error in get_relevant_documents: {e}", exc_info=True)
+        logger.exception(f"Error in get_relevant_documents: {e}", exc_info=True)
         return []
 
-def get_laptop_specs(query: str) -> Dict[str, str]:
+def get_books_specs(query: str) -> Dict[str, str]:
     """
-    Retrieve laptop specifications.
+    Retrieve Book specifications.
     
     Args:
         query (str): The user's query (not used in this function but kept for consistency).
     
     Returns:
-        Dict[str, str]: A dictionary of laptop specifications.
+        Dict[str, str]: A dictionary of Book specifications.
     """
     try:
-        specs = key_value_store.mget(["laptop1", "laptop2", "laptop3", "laptop4"])
-        return dict(zip(["laptop1", "laptop2", "laptop3", "laptop4"], specs))
+        specs = key_value_store.mget(["book1", "book2", "book3", "book4"])
+        return dict(zip(["book1", "book2", "book3", "book4"], specs))
     except Exception as e:
-        logger.error(f"Error in get_laptop_specs: {e}", exc_info=True)
+        logger.exception(f"Error in get_books_specs: {e}", exc_info=True)
         return {}
 
 # Define the main chain for processing user input
 main_chain = (
     RunnablePassthrough.assign(
         reviews=RunnableLambda(lambda _: '\n'.join([doc.page_content for doc in doc_loader.load()][:2])),
-        specs=RunnableLambda(lambda _: key_value_store.mget(["laptop1", "laptop2", "laptop3", "laptop4"])),
+        specs=RunnableLambda(lambda _: key_value_store.mget(["book1", "book2", "book3", "book4"])),
         history=RunnableLambda(lambda _: chat_history.messages)
     )
     | conversation_template
@@ -166,7 +166,7 @@ def process_user_input(user_input: str) -> str:
         
         return response
     except Exception as e:
-        logger.error(f"Error in process_user_input: {e}", exc_info=True)
+        logger.exception(f"Error in process_user_input: {e}", exc_info=True)
         return f"I apologize, but I encountered an error while processing your request. Please try again."
 
 def populate_caches():
@@ -176,19 +176,19 @@ def populate_caches():
     try:
         # Populate review cache
         reviews = {
-            "laptop1": "Great performance for coding and video editing. The 16GB RAM and dedicated GPU make multitasking a breeze.",
-            "laptop2": "Excellent battery life, perfect for students. Lightweight and portable, but the processor is a bit slow for heavy tasks.",
-            "laptop3": "High-resolution display, ideal for graphic design. Comes with a stylus, but the price is on the higher side.",
-            "laptop4": "Budget-friendly option with decent specs. Good for everyday tasks, but struggles with gaming.",
+            "book1": "Great performance for coding and video editing. The 16GB RAM and dedicated GPU make multitasking a breeze.",
+            "book2": "Excellent battery life, perfect for students. Lightweight and portable, but the processor is a bit slow for heavy tasks.",
+            "book3": "High-resolution display, ideal for graphic design. Comes with a stylus, but the price is on the higher side.",
+            "book4": "Budget-friendly option with decent specs. Good for everyday tasks, but struggles with gaming.",
         }
         doc_loader.populate_cache(reviews)
         
         # Populate specs cache
         specs = {
-            "laptop1": "16GB RAM, NVIDIA RTX 3060, Intel i7 11th Gen",
-            "laptop2": "8GB RAM, Intel Iris Xe Graphics, Intel i5 11th Gen",
-            "laptop3": "32GB RAM, NVIDIA RTX 3080, AMD Ryzen 9",
-            "laptop4": "8GB RAM, Intel UHD Graphics, Intel i3 10th Gen",
+            "book1": "16GB RAM, NVIDIA RTX 3060, Intel i7 11th Gen",
+            "book2": "8GB RAM, Intel Iris Xe Graphics, Intel i5 11th Gen",
+            "book3": "32GB RAM, NVIDIA RTX 3080, AMD Ryzen 9",
+            "book4": "8GB RAM, Intel UHD Graphics, Intel i3 10th Gen",
         }
         key_value_store.mset([(k, v) for k, v in specs.items()])
 
@@ -203,36 +203,35 @@ def populate_caches():
         
         logger.info("Caches populated and verified with sample data.")
     except Exception as e:
-        logger.error(f"Error populating caches: {e}", exc_info=True)
+        logger.exception(f"Error populating caches: {e}", exc_info=True)
         raise  # Re-raise the exception to ensure it's not silently ignored
 
 def main():
     """
-    Main function to run the Laptop Recommendation System.
+    Main function to run the book Recommendation System.
     """
-    print("Welcome to the Laptop Recommendation System!")
+    print("Welcome to the book Recommendation System!")
     print("Populating caches with sample data...")
     populate_caches()
     
-    print("You can ask questions about laptops or request recommendations.")
+    print("You can ask questions about Books or request recommendations.")
     print("Type 'exit' to end the conversation.")
 
     while True:
         try:
             user_input = input("\nYou: ")
             if user_input.lower() == 'exit':
-                print("Thank you for using the Laptop Recommendation System. Goodbye!")
+                print("Thank you for using the Book Recommendation System. Goodbye!")
                 break
 
             response = process_user_input(user_input)
             print(f"\nAI: {response}")
         except Exception as e:
-            logger.error(f"An error occurred in the main loop: {e}", exc_info=True)
-            print("An error occurred. Please try again or type 'exit' to quit.")
-
+            logger.exception(f"An error occurred in the main loop: {e}", exc_info=True)
+            
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.error(f"An unhandled error occurred: {e}", exc_info=True)
+        logger.exception(f"An unhandled error occurred: {e}", exc_info=True)
         print("An unexpected error occurred. The program will now exit.")
